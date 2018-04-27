@@ -26,6 +26,7 @@ import ipaddress
 from pymodbus3.client.sync import ModbusTcpClient
 from pymodbus3.exceptions import ConnectionException
 
+MAX_1WIRE = 7  # maximum 1-wire temperature sensors
 HR_KI_003 = 66  # device type and version info TT.MM.NN.PP
 HR_KI_004 = 234  # build date in Unix EPOCH
 HR_CI_006_CV = 196  # current IP address 32 bit decimal format
@@ -40,6 +41,29 @@ HW_CI_009_PV = 96  # pending MAC
 
 HW_CY_004 = 46  # reboot device
 HW_CY_006 = 59  # Update IP using bending value
+
+HR_TI_001 = 40  # 1-wire temperatures
+HR_TI_002 = 41
+HR_TI_003 = 42
+HR_TI_004 = 43
+HR_TI_005 = 44
+HR_TI_006 = 45
+HR_TI_007 = 46
+
+HR_TI_001_ID_H = 206  # 1-wire UUIDs
+HR_TI_001_ID_L = 208
+HR_TI_002_ID_H = 210
+HR_TI_002_ID_L = 212
+HR_TI_003_ID_H = 214
+HR_TI_003_ID_L = 216
+HR_TI_004_ID_H = 218
+HR_TI_004_ID_L = 220
+HR_TI_005_ID_H = 222
+HR_TI_005_ID_L = 224
+HR_TI_006_ID_H = 226
+HR_TI_006_ID_L = 228
+HR_TI_007_ID_H = 230
+HR_TI_007_ID_L = 232
 
 
 parser = argparse.ArgumentParser(description="Beta Remote I/O Manager")
@@ -65,6 +89,7 @@ parser.add_argument("--map", action="store",
                     help="1 wire config maps")
 
 args = parser.parse_args()
+
 
 def ip_range(anIPRange):
     '''
@@ -120,7 +145,7 @@ def format_mac(modbus_regs):
     for i in modbus_regs[1:]:
         byte_mac.append(i.to_bytes(2, byteorder='big'))
     for i in byte_mac:
-        res += hex(i[0]) + " " + hex(i[1]) + " "
+        res += f"{i[0]:#0{4}x}" + " " + f"{i[1]:#0{4}x}" + " "
     return res
 
 
@@ -208,6 +233,49 @@ if args.update:
         print("one of more network parameters missing")
 
 
+def format_uuid(modbus_regs):
+    byte_uuid = []
+    res = ""
+    for i in modbus_regs:
+        byte_uuid.append(i.to_bytes(2, byteorder='big'))
+    for i in byte_uuid:
+        res += f"{i[0]:#0{4}x}" + " " + f"{i[1]:#0{4}x}" + " "
+        #res += hex(i[0]) + " " + hex(i[1]) + " "
+    return res
+
+def to_signed( aunsinged):
+    '''
+    convert an unsigned 16bit modbus integer to a signed integer
+    '''
+    if aunsinged > 32677:
+        return aunsinged - 65536
+    else:
+        return aunsinged
+
+def get_1wire_config(ip_address):
+    try:
+        client = ModbusTcpClient(ip_address)
+
+        wire_config = []
+        for i in range(MAX_1WIRE):
+            holding_regs = client.read_holding_registers(
+                HR_TI_001_ID_H + i * 4, 4)
+            cur_uuid = format_uuid(holding_regs.registers)
+            holding_regs = client.read_holding_registers(HR_TI_001 + i, 1)
+            wire_config.append((i,cur_uuid, i, to_signed(holding_regs.registers[0])/10.0))
+
+        client.close()
+        return wire_config
+    except ConnectionException:
+        print("{0} - unavailable".format(cuip))
+
+
+def display_1wire_config(awire_config):
+    for (idx, uuid, entry, temperature) in awire_config:
+        print("idx:{0}->{1} ({2})->UUID:{3}temperature:{4}".format(
+            idx, entry, idx, uuid, temperature))
+
+
 if args.scan:
     print("Scanning...")
     for address in ip_range(args.scan):
@@ -215,4 +283,6 @@ if args.scan:
 
 
 if args.wire:
-    print( "TODO")
+    wire_config = get_1wire_config(args.wire)
+    print("Current 1-Wire config at {0}".format(args.wire))
+    display_1wire_config(wire_config)
