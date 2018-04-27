@@ -262,7 +262,7 @@ def get_1wire_config(ip_address):
                 HR_TI_001_ID_H + i * 4, 4)
             cur_uuid = format_uuid(holding_regs.registers)
             holding_regs = client.read_holding_registers(HR_TI_001 + i, 1)
-            wire_config.append((i,cur_uuid, i, to_signed(holding_regs.registers[0])/10.0))
+            wire_config.append([i,cur_uuid, i, to_signed(holding_regs.registers[0])/10.0])
 
         client.close()
         return wire_config
@@ -275,14 +275,20 @@ def display_1wire_config(awire_config):
         print("idx:{0}->{1} ({2})->UUID:{3}temperature:{4}".format(
             idx, entry, idx, uuid, temperature))
 
-
 if args.scan:
     print("Scanning...")
     for address in ip_range(args.scan):
         display_remote_io(address)
 
-
 if args.wire:
     wire_config = get_1wire_config(args.wire)
-    print("Current 1-Wire config at {0}".format(args.wire))
-    display_1wire_config(wire_config)
+    if args.map:
+        maps = args.map.split(":")
+        #print(wire_config[int(maps[0])][2])
+        wire_config[int(maps[0])][2]=int(maps[1])
+        wire_config[int(maps[1])][2]=int(maps[0])        
+        #wire_config[maps[0][2]=maps[1]]
+        display_1wire_config(wire_config)
+    else:
+        print("Current 1-Wire config at {0}".format(args.wire))
+        display_1wire_config(wire_config)
