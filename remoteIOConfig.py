@@ -230,7 +230,7 @@ if args.update:
         print("Fetching remote I/O revised network settings...")
         display_remote_io(args.ip)
     else:
-        print("one of more network parameters missing")
+        print("One of more network parameters missing")
 
 
 def format_uuid(modbus_regs):
@@ -251,6 +251,45 @@ def to_signed( aunsinged):
         return aunsinged - 65536
     else:
         return aunsinged
+
+def confirm(prompt=None, resp=False):
+    """prompts for yes or no response from the user. Returns True for yes and
+    False for no.
+
+    'resp' should be set to the default value assumed by the caller when
+    user simply types ENTER.
+
+    >>> confirm(prompt='Create Directory?', resp=True)
+    Create Directory? [y]|n:
+    True
+    >>> confirm(prompt='Create Directory?', resp=False)
+    Create Directory? [n]|y:
+    False
+    >>> confirm(prompt='Create Directory?', resp=False)
+    Create Directory? [n]|y: y
+    True
+    https://code.activestate.com/recipes/541096-prompt-the-user-for-comfirmation/
+    """
+
+    if prompt is None:
+        prompt = 'Confirm'
+
+    if resp:
+        prompt = '%s [%s]|%s: ' % (prompt, 'y', 'n')
+    else:
+        prompt = '%s [%s]|%s: ' % (prompt, 'n', 'y')
+
+    while True:
+        ans = input(prompt)
+        if not ans:
+            return resp
+        if ans not in ['y', 'Y', 'n', 'N']:
+            print('please enter y or n.')
+            continue
+        if ans == 'y' or ans == 'Y':
+            return True
+        if ans == 'n' or ans == 'N':
+            return False
 
 def get_1wire_config(ip_address):
     try:
@@ -283,12 +322,16 @@ if args.scan:
 if args.wire:
     wire_config = get_1wire_config(args.wire)
     if args.map:
+        print("MAPME")
         maps = args.map.split(":")
         #print(wire_config[int(maps[0])][2])
         wire_config[int(maps[0])][2]=int(maps[1])
-        wire_config[int(maps[1])][2]=int(maps[0])        
+        wire_config[int(maps[1])][2]=int(maps[0])
         #wire_config[maps[0][2]=maps[1]]
-        display_1wire_config(wire_config)
+        if confirm("Update Remote?"):
+            display_1wire_config(wire_config)
+        else:
+            print("quitting...")
     else:
         print("Current 1-Wire config at {0}".format(args.wire))
         display_1wire_config(wire_config)
