@@ -27,43 +27,43 @@ from pymodbus3.client.sync import ModbusTcpClient
 from pymodbus3.exceptions import ConnectionException
 
 MAX_1WIRE = 7  # maximum 1-wire temperature sensors
-HR_KI_003 = 66  # device type and version info TT.MM.NN.PP
-HR_KI_004 = 234  # build date in Unix EPOCH
-HR_CI_006_CV = 196  # current IP address 32 bit decimal format
-HR_CI_007_CV = 198  # current  gateway
-HR_CI_008_CV = 200  # current subnet
-HR_CI_009_CV = 202  # define current MAC
+HR_KI_003 = 36  # device type and version info TT.MM.NN.PP
+HR_KI_004 = 92  # build date in Unix EPOCH
+HR_CI_006_CV = 82  # current IP address 32 bit decimal format
+HR_CI_007_CV = 84  # current  gateway
+HR_CI_008_CV = 86  # current subnet
+HR_CI_009_CV = 88  # define current MAC
 
-HW_CI_006_PV = 90  # pending IP decimal format
-HW_CI_007_PV = 92  # pending gateway
-HW_CI_008_PV = 94  # pending subnet
-HW_CI_009_PV = 96  # pending MAC
+HW_CI_006_PV = 50  # pending IP decimal format
+HW_CI_007_PV = 52  # pending gateway
+HW_CI_008_PV = 54  # pending subnet
+HW_CI_009_PV = 56  # pending MAC
 
-HW_CY_004 = 46  # reboot device
-HW_CY_006 = 59  # Update IP using bending value
+HW_CY_004 = 25  # reboot device
+HW_CY_006 = 27  # Update IP using bending value
 
-HR_TI_001 = 40  # 1-wire temperatures
-HR_TI_002 = 41
-HR_TI_003 = 42
-HR_TI_004 = 43
-HR_TI_005 = 44
-HR_TI_006 = 45
-HR_TI_007 = 46
+HR_TI_001 = 20  # 1-wire temperatures
+HR_TI_002 = 21
+HR_TI_003 = 22
+HR_TI_004 = 23
+HR_TI_005 = 24
+HR_TI_006 = 25
+HR_TI_007 = 26
 
-HR_TI_001_ID_H = 206  # 1-wire UUIDs
-HR_TI_001_ID_L = 208
-HR_TI_002_ID_H = 210
-HR_TI_002_ID_L = 212
-HR_TI_003_ID_H = 214
-HR_TI_003_ID_L = 216
-HR_TI_004_ID_H = 218
-HR_TI_004_ID_L = 220
-HR_TI_005_ID_H = 222
-HR_TI_005_ID_L = 224
-HR_TI_006_ID_H = 226
-HR_TI_006_ID_L = 228
-HR_TI_007_ID_H = 230
-HR_TI_007_ID_L = 232
+HR_TI_001_ID_H = 94  # 1-wire UUIDs
+HR_TI_001_ID_L = 96
+HR_TI_002_ID_H = 98
+HR_TI_002_ID_L = 100
+HR_TI_003_ID_H = 102
+HR_TI_003_ID_L = 104
+HR_TI_004_ID_H = 106
+HR_TI_004_ID_L = 108
+HR_TI_005_ID_H = 110
+HR_TI_005_ID_L = 112
+HR_TI_006_ID_H = 114
+HR_TI_006_ID_L = 116
+HR_TI_007_ID_H = 118
+HR_TI_007_ID_L = 120
 
 
 parser = argparse.ArgumentParser(description="Beta Remote I/O Manager")
@@ -86,7 +86,7 @@ parser.add_argument("--wire", action="store",
                     help="1 wire config IP")
 
 parser.add_argument("--map", action="store",
-                    help="1 wire config maps")
+                    help="1 wire config maps - deprecated")
 
 args = parser.parse_args()
 
@@ -150,12 +150,14 @@ def format_mac(modbus_regs):
 
 
 def device_type_name(device_type):
-    if device_type == 0:
-        return "GC"
+    if device_type == 2:
+        return "Growing Chamber"
     elif device_type == 1:
-        return "NC"
+        return "Nutrient Center"
+    elif device_type == 3:
+        return "Nutrient Center I/O 2"        
     else:
-        return "BC"
+        return "Group Controller"
 
 
 def display_remote_io(ip_address):
@@ -178,11 +180,11 @@ def display_remote_io(ip_address):
 
         ip_holding_regs = client.read_holding_registers(HR_CI_009_CV, 4)
         cur_mac = format_mac(ip_holding_regs.registers)
-        ip_holding_regs = client.read_holding_registers(HR_KI_003, 1)
+        ip_holding_regs = client.read_holding_registers(HR_KI_003, 2)
         cur_version = format_version(ip_holding_regs.registers[0])
 
         print("{0} - {1}, version:{2}.{3}.{4} ".format(
-            ip_address, device_type_name(cur_version[0]), cur_version[1], cur_version[2], cur_version[3]), end='')
+            ip_address, device_type_name(ip_holding_regs.registers[1]), cur_version[1], cur_version[2], cur_version[3]), end='')
         print("gateway:{0}, subnet:{1} mac:{2}".format(
             cur_gateway, cur_subnet, cur_mac))
         client.close()
